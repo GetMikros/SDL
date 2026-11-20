@@ -192,6 +192,10 @@ private:
     SDLBRefFilter *m_filter;
 };
 
+void SDL_SYS_CloseFileDialogs(void)
+{
+}
+
 void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
 {
     SDL_Window *window = (SDL_Window *)SDL_GetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, NULL);

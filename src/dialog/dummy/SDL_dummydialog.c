@@ -24,6 +24,10 @@
 
 #ifdef SDL_DIALOG_DUMMY
 
+void SDL_SYS_CloseFileDialogs(void)
+{
+}
+
 void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
 {
   SDL_Unsupported();

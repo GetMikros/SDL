@@ -1043,10 +1043,72 @@ void windows_ShowFileDialog(void *ptr)
     SDL_free(filebuffer);
 }
 
+// The threads showing a dialog, which SDL_CloseFileDialogs() closes.
+#define MAX_DIALOG_THREADS 64
+static SDL_SpinLock dialog_threads_lock;
+static DWORD dialog_threads[MAX_DIALOG_THREADS];
+static int dialog_thread_count;
+
+static void add_dialog_thread(void)
+{
+    SDL_LockSpinlock(&dialog_threads_lock);
+    if (dialog_thread_count < MAX_DIALOG_THREADS) {
+        dialog_threads[dialog_thread_count++] = GetCurrentThreadId();
+    }
+    SDL_UnlockSpinlock(&dialog_threads_lock);
+}
+
+static void remove_dialog_thread(void)
+{
+    const DWORD id = GetCurrentThreadId();
+    SDL_LockSpinlock(&dialog_threads_lock);
+    for (int i = 0; i < dialog_thread_count; ++i) {
+        if (dialog_threads[i] == id) {
+            dialog_threads[i] = dialog_threads[--dialog_thread_count];
+            break;
+        }
+    }
+    SDL_UnlockSpinlock(&dialog_threads_lock);
+}
+
+// A visible dialog window ("#32770": the file dialogs, and the folder browser) closes, which
+// cancels it.
+static BOOL CALLBACK close_dialog_window(HWND hwnd, LPARAM lparam)
+{
+    (void)lparam;
+    wchar_t name[16];
+    if (IsWindowVisible(hwnd) && GetClassNameW(hwnd, name, SDL_arraysize(name)) && SDL_wcscmp(name, L"#32770") == 0) {
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+    }
+    return TRUE;
+}
+
+void SDL_SYS_CloseFileDialogs(void)
+{
+    // Again until every dialog's thread has called its callback and ended (a thread may not show
+    // its window yet), for 5 seconds at most.
+    for (int tries = 0; tries < 500; ++tries) {
+        DWORD threads[MAX_DIALOG_THREADS];
+        SDL_LockSpinlock(&dialog_threads_lock);
+        const int count = dialog_thread_count;
+        SDL_memcpy(threads, dialog_threads, sizeof(DWORD) * count);
+        SDL_UnlockSpinlock(&dialog_threads_lock);
+        if (count == 0) {
+            return;
+        }
+        for (int i = 0; i < count; ++i) {
+            EnumThreadWindows(threads[i], close_dialog_window, 0);
+        }
+        SDL_Delay(10);
+    }
+}
+
 int windows_file_dialog_thread(void *ptr)
 {
+    add_dialog_thread();
     windows_ShowFileDialog(ptr);
     freeWinArgs(ptr);
+    remove_dialog_thread();
     return 0;
 }
 
@@ -1129,8 +1191,10 @@ void windows_ShowFolderDialog(void *ptr)
 
 int windows_folder_dialog_thread(void *ptr)
 {
+    add_dialog_thread();
     windows_ShowFolderDialog(ptr);
     freeWinFArgs((winFArgs *)ptr);
+    remove_dialog_thread();
     return 0;
 }
 

@@ -53,6 +53,22 @@ static void AddFileExtensionType(NSMutableArray *types, const char *pattern_ptr)
     }
 }
 
+// The sheets open, which SDL_CloseFileDialogs() ends. Main thread.
+static NSMutableArray *open_sheets = nil;
+
+void SDL_SYS_CloseFileDialogs(void)
+{
+    NSArray *sheets = [open_sheets copy];
+    for (NSSavePanel *sheet in sheets) {
+        NSWindow *parent = [sheet sheetParent];
+        if (parent) {
+            [parent endSheet:sheet returnCode:NSModalResponseCancel];
+        } else {
+            [sheet cancel:nil];
+        }
+    }
+}
+
 static void ReactivateAfterDialog(void)
 {
     for (NSRunningApplication *i in [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.apple.dock"]) {
@@ -182,8 +198,13 @@ void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFil
     }
 
     if (w) {
+        if (!open_sheets) {
+            open_sheets = [[NSMutableArray alloc] init];
+        }
+        [open_sheets addObject:dialog];
         // [dialog beginWithCompletionHandler:^(NSInteger result) {
         [dialog beginSheetModalForWindow:w completionHandler:^(NSInteger result) {
+            [open_sheets removeObject:dialog];
             if (result == NSModalResponseOK) {
                 if (dialog_as_open) {
                     NSArray *urls = [dialog_as_open URLs];

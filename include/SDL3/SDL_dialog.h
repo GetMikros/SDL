@@ -325,6 +325,17 @@ typedef enum SDL_FileDialogType
  */
 extern SDL_DECLSPEC void SDLCALL SDL_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);
 
+/**
+ * Close every file dialog that is still open, as if the user cancelled it.
+ *
+ * Each dialog's callback is called, with an empty list, and this function
+ * returns once they all have been (or, for a dialog that doesn't close, after
+ * a few seconds). Elegance's addition to SDL: SDL has no way to close a dialog.
+ *
+ * \threadsafety This function should be called on the main thread.
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_CloseFileDialogs(void);
+
 #define SDL_PROP_FILE_DIALOG_FILTERS_POINTER     "SDL.filedialog.filters"
 #define SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER     "SDL.filedialog.nfilters"
 #define SDL_PROP_FILE_DIALOG_WINDOW_POINTER      "SDL.filedialog.window"

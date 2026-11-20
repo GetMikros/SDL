@@ -221,6 +221,53 @@ cleanup:
 
 // TODO: Zenity survives termination of the parent
 
+// The zenity processes running, which SDL_Zenity_CloseFileDialogs() kills; and whether it did.
+#define MAX_ZENITY_PROCESSES 64
+static SDL_SpinLock zenity_lock;
+static SDL_Process *zenity_processes[MAX_ZENITY_PROCESSES];
+static int zenity_count;
+static SDL_AtomicInt zenity_threads;
+static SDL_AtomicInt zenity_closing;
+
+static bool add_zenity(SDL_Process *process)
+{
+    bool added = false;
+    SDL_LockSpinlock(&zenity_lock);
+    if (zenity_count < MAX_ZENITY_PROCESSES) {
+        zenity_processes[zenity_count++] = process;
+        added = true;
+    }
+    SDL_UnlockSpinlock(&zenity_lock);
+    return added;
+}
+
+static void remove_zenity(SDL_Process *process)
+{
+    SDL_LockSpinlock(&zenity_lock);
+    for (int i = 0; i < zenity_count; ++i) {
+        if (zenity_processes[i] == process) {
+            zenity_processes[i] = zenity_processes[--zenity_count];
+            break;
+        }
+    }
+    SDL_UnlockSpinlock(&zenity_lock);
+}
+
+void SDL_Zenity_CloseFileDialogs(void)
+{
+    SDL_SetAtomicInt(&zenity_closing, 1);
+    // Again until every dialog's thread has called its callback and ended, for 5 seconds at most.
+    for (int tries = 0; tries < 500 && SDL_GetAtomicInt(&zenity_threads) > 0; ++tries) {
+        SDL_LockSpinlock(&zenity_lock);
+        for (int i = 0; i < zenity_count; ++i) {
+            SDL_KillProcess(zenity_processes[i], true);
+        }
+        SDL_UnlockSpinlock(&zenity_lock);
+        SDL_Delay(10);
+    }
+    SDL_SetAtomicInt(&zenity_closing, 0);
+}
+
 static void run_zenity(SDL_DialogFileCallback callback, void *userdata, void *argv)
 {
     SDL_Process *process = NULL;
@@ -258,7 +305,18 @@ static void run_zenity(SDL_DialogFileCallback callback, void *userdata, void *ar
         goto done;
     }
 
+    const bool tracked = add_zenity(process);
     container = SDL_ReadProcess(process, &bytes_read, &status);
+    if (tracked) {
+        remove_zenity(process);
+    }
+    if (SDL_GetAtomicInt(&zenity_closing)) {
+        // Killed by SDL_CloseFileDialogs(): cancelled.
+        const char *none[1] = { NULL };
+        callback(userdata, none, -1);
+        result = true;
+        goto done;
+    }
     if (!container) {
         goto done;
     }
@@ -328,6 +386,7 @@ static int run_zenity_thread(void *ptr)
     zenityArgs *args = ptr;
     run_zenity(args->callback, args->userdata, args->argv);
     free_zenity_args(args);
+    SDL_AddAtomicInt(&zenity_threads, -1);
     return 0;
 }
 
@@ -339,9 +398,11 @@ void SDL_Zenity_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_Dialog
         return;
     }
 
+    SDL_AddAtomicInt(&zenity_threads, 1);
     SDL_Thread *thread = SDL_CreateThread(run_zenity_thread, "SDL_ZenityFileDialog", (void *)args);
 
     if (!thread) {
+        SDL_AddAtomicInt(&zenity_threads, -1);
         free_zenity_args(args);
         callback(userdata, NULL, -1);
         return;

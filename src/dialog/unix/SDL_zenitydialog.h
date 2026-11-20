@@ -21,7 +21,8 @@
 
 #include "SDL_internal.h"
 
-extern void SDL_Zenity_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);
+extern void SDL_Zenity_CloseFileDialogs(void);
+void SDL_Zenity_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);
 
 /** @returns non-zero if available, zero if unavailable */
 extern bool SDL_Zenity_detect(void);

@@ -20,3 +20,4 @@
 */
 
 void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);
+void SDL_SYS_CloseFileDialogs(void);

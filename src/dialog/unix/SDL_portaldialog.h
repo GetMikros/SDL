@@ -21,6 +21,7 @@
 
 #include "SDL_internal.h"
 
+void SDL_Portal_CloseFileDialogs(void);
 void SDL_Portal_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props);
 
 /** @returns non-zero if available, zero if unavailable */

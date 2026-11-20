@@ -23,6 +23,10 @@
 #include "../SDL_dialog.h"
 #include "../../core/android/SDL_android.h"
 
+void SDL_SYS_CloseFileDialogs(void)
+{
+}
+
 void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
 {
     SDL_DialogFileFilter *filters = SDL_GetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER, NULL);

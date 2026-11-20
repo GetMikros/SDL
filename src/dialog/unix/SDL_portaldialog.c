@@ -170,6 +170,55 @@ static void DBus_AppendByteArray(SDL_DBusContext *dbus, DBusMessageIter *options
     dbus->message_iter_close_container(options, &options_pair);
 }
 
+// The requests open, which SDL_Portal_CloseFileDialogs() closes.
+#define MAX_OPEN_REQUESTS 64
+static SDL_SpinLock open_requests_lock;
+static SignalCallback *open_requests[MAX_OPEN_REQUESTS];
+static int open_request_count;
+
+static void forget_request(SignalCallback *data)
+{
+    SDL_LockSpinlock(&open_requests_lock);
+    for (int i = 0; i < open_request_count; ++i) {
+        if (open_requests[i] == data) {
+            open_requests[i] = open_requests[--open_request_count];
+            break;
+        }
+    }
+    SDL_UnlockSpinlock(&open_requests_lock);
+}
+
+static DBusHandlerResult DBus_MessageFilter(DBusConnection *conn, DBusMessage *msg, void *data);
+
+void SDL_Portal_CloseFileDialogs(void)
+{
+    SDL_DBusContext *dbus = SDL_DBus_GetContext();
+    for (;;) {
+        SignalCallback *data = NULL;
+        SDL_LockSpinlock(&open_requests_lock);
+        if (open_request_count > 0) {
+            data = open_requests[--open_request_count];
+        }
+        SDL_UnlockSpinlock(&open_requests_lock);
+        if (!data) {
+            return;
+        }
+        if (dbus && dbus->session_conn) {
+            DBusMessage *close = dbus->message_new_method_call(PORTAL_DESTINATION, data->path, SIGNAL_INTERFACE, "Close");
+            if (close) {
+                dbus->connection_send(dbus->session_conn, close, NULL);
+                dbus->message_unref(close);
+            }
+            dbus->connection_remove_filter(dbus->session_conn, &DBus_MessageFilter, data);
+            dbus->connection_flush(dbus->session_conn);
+        }
+        const char *none[1] = { NULL };
+        data->callback(data->userdata, none, -1);
+        SDL_free((void *)data->path);
+        SDL_free(data);
+    }
+}
+
 static DBusHandlerResult DBus_MessageFilter(DBusConnection *conn, DBusMessage *msg, void *data)
 {
     SDL_DBusContext *dbus = SDL_DBus_GetContext();
@@ -283,6 +332,7 @@ static DBusHandlerResult DBus_MessageFilter(DBusConnection *conn, DBusMessage *m
         path[current] = NULL;
         signal_data->callback(signal_data->userdata, path, -1); // TODO: Fetch the index of the filter that was used
 done:
+        forget_request(signal_data);
         dbus->connection_remove_filter(conn, &DBus_MessageFilter, signal_data);
 
         if (path) {
@@ -537,6 +587,11 @@ void SDL_Portal_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_Dialog
     /* TODO: This should be registered before opening the portal, or the filter will not catch
              the message if it is sent before we register the filter.
     */
+    SDL_LockSpinlock(&open_requests_lock);
+    if (open_request_count < MAX_OPEN_REQUESTS) {
+        open_requests[open_request_count++] = data;
+    }
+    SDL_UnlockSpinlock(&open_requests_lock);
     dbus->connection_add_filter(dbus->session_conn,
                                 &DBus_MessageFilter, data, NULL);
     dbus->connection_flush(dbus->session_conn);
@@ -608,6 +663,10 @@ done:
 #else
 
 // Dummy implementation to avoid compilation problems
+
+void SDL_Portal_CloseFileDialogs(void)
+{
+}
 
 void SDL_Portal_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
 {

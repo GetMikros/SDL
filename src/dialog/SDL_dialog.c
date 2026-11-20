@@ -64,6 +64,13 @@ void SDL_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCal
 #endif
 }
 
+void SDL_CloseFileDialogs(void)
+{
+#ifndef SDL_DIALOG_DISABLED
+    SDL_SYS_CloseFileDialogs();
+#endif
+}
+
 void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, int nfilters, const char *default_location, bool allow_many)
 {
 #ifdef SDL_DIALOG_DISABLED

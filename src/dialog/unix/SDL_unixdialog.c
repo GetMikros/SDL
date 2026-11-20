@@ -68,6 +68,13 @@ void SDLCALL hint_callback(void *userdata, const char *name, const char *oldValu
     detect_available_methods(newValue);
 }
 
+void SDL_SYS_CloseFileDialogs(void)
+{
+    // Whichever showed them (the hint may have changed since).
+    SDL_Portal_CloseFileDialogs();
+    SDL_Zenity_CloseFileDialogs();
+}
+
 void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
 {
     // Call detect_available_methods() again each time in case the situation changed
