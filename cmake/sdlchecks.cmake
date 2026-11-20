@@ -643,6 +643,11 @@ endmacro()
 macro(CheckWayland)
   if(SDL_WAYLAND)
     set(WAYLAND_PKG_CONFIG_SPEC "wayland-client>=1.18" wayland-egl wayland-cursor egl "xkbcommon>=0.5.0")
+    if(MIKROS)
+      # Mikros has the libraries of the EGL window functions and of cursor
+      # themes, but no EGL.
+      set(WAYLAND_PKG_CONFIG_SPEC "wayland-client>=1.18" wayland-egl wayland-cursor "xkbcommon>=0.5.0")
+    endif()
     set(PC_WAYLAND_FOUND FALSE)
     if(PKG_CONFIG_FOUND)
       pkg_check_modules(PC_WAYLAND IMPORTED_TARGET ${WAYLAND_PKG_CONFIG_SPEC})
