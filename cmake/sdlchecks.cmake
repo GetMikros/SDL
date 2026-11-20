@@ -1008,6 +1008,10 @@ macro(CheckPTHREAD)
       set(PTHREAD_LDFLAGS "-pthread")
     elseif(QNX)
       # pthread support is baked in
+    elseif(MIKROS)
+      # The C library has the pthread functions, and no libpthread.
+      set(PTHREAD_CFLAGS "-D_REENTRANT")
+      set(PTHREAD_LDFLAGS "")
     elseif(HURD)
       set(PTHREAD_CFLAGS "-D_REENTRANT")
       set(PTHREAD_LDFLAGS "-pthread")
