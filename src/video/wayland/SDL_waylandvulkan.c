@@ -37,6 +37,8 @@
 
 #ifdef SDL_PLATFORM_OPENBSD
 #define DEFAULT_VULKAN "libvulkan.so"
+#elif defined(SDL_PLATFORM_MIKROS)
+#define DEFAULT_VULKAN "libvulkan.dlib"
 #else
 #define DEFAULT_VULKAN "libvulkan.so.1"
 #endif

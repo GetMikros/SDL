@@ -237,6 +237,16 @@
 #define SDL_PLATFORM_EMSCRIPTEN 1
 #endif
 
+#ifdef __mikros__
+
+/**
+ * A preprocessor macro that is only defined if compiling for Mikros.
+ *
+ * \since This macro is available since SDL 3.4.21.
+ */
+#define SDL_PLATFORM_MIKROS 1
+#endif
+
 #ifdef __NetBSD__
 
 /**
