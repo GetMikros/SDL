@@ -242,7 +242,7 @@
 /**
  * A preprocessor macro that is only defined if compiling for Mikros.
  *
- * \since This macro is available since SDL 3.4.21.
+ * \since This macro is only defined by the Mikros fork of SDL 3.4.20.
  */
 #define SDL_PLATFORM_MIKROS 1
 #endif
