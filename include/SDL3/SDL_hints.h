@@ -2864,7 +2864,8 @@ extern "C" {
  *
  * The variable can be set to the following values:
  *
- * - "0": Ignore mouse clicks that activate a window. (default)
+ * - "0": Ignore mouse clicks that activate a window. (default, except on
+ *   Mikros, where the Wayland backend defaults to "1")
  * - "1": Generate events for mouse clicks that activate a window.
  *
  * This hint can be set anytime.

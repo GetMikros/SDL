@@ -89,6 +89,16 @@
 // Focus clickthrough timeout
 #define WAYLAND_FOCUS_CLICK_TIMEOUT_NS SDL_MS_TO_NS(10)
 
+/* Whether a click that gives a window the keyboard focus also reaches it when
+ * the app has not set SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH. Mikros's compositor
+ * sends the keyboard enter and the button press in one flush, so SDL cannot
+ * tell such a click from one meant for focus only, and the app would lose it. */
+#ifdef SDL_PLATFORM_MIKROS
+#define WAYLAND_FOCUS_CLICKTHROUGH_DEFAULT true
+#else
+#define WAYLAND_FOCUS_CLICKTHROUGH_DEFAULT false
+#endif
+
 // Timer rollover detection thresholds
 #define WAYLAND_TIMER_ROLLOVER_INTERVAL_LOW  (SDL_MAX_UINT32 / 16U)
 #define WAYLAND_TIMER_ROLLOVER_INTERVAL_HIGH (WAYLAND_TIMER_ROLLOVER_INTERVAL_LOW * 15U)
@@ -1014,7 +1024,7 @@ static void pointer_handle_button_common(SDL_WaylandSeat *seat, uint32_t serial,
         if (window->last_focus_event_time_ns) {
             if (state == WL_POINTER_BUTTON_STATE_PRESSED &&
                 (SDL_GetTicksNS() - window->last_focus_event_time_ns) < WAYLAND_FOCUS_CLICK_TIMEOUT_NS) {
-                ignore_click = !SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, false);
+                ignore_click = !SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, WAYLAND_FOCUS_CLICKTHROUGH_DEFAULT);
             }
 
             window->last_focus_event_time_ns = 0;
